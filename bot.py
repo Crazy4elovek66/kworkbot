@@ -51,13 +51,14 @@ def get_kwork_orders():
 
             for order in order_cards:
                 title = order.find("a", class_="wants-card__header-title").text.strip()
+                description = order.find("div", class_="wants-card__description").text.strip() if order.find("div", class_="wants-card__description") else ""
                 link = "https://kwork.ru" + order.find("a")["href"]
                 price = order.find("div", class_="wants-card__price").text.strip()
 
-                # Фильтрация по ключевым словам
-                if any(word.lower() in title.lower() for word in KEYWORDS):
+                # Фильтрация по ключевым словам в названии и описании
+                if any(word.lower() in title.lower() for word in KEYWORDS) or any(word.lower() in description.lower() for word in KEYWORDS):
                     # Проверяем, что в заказе НЕТ стоп-слов
-                    if not any(stopword.lower() in title.lower() for stopword in STOPWORDS):
+                    if not any(stopword.lower() in title.lower() or stopword.lower() in description.lower() for stopword in STOPWORDS):
                         orders.append(f"📌 {title}\n💰 {price}\n🔗 {link}")
 
     return orders
@@ -66,3 +67,32 @@ def get_kwork_orders():
 def check_orders():
     """Функция проверяет заказы и отправляет уведомления в Telegram."""
     last_orders = []  # Храним список найденных заказов
+
+    while True:
+        orders = get_kwork_orders()
+        if orders:  # Если есть новые заказы
+            for order in orders:
+                if order not in last_orders:  # Отправляем только новые заказы
+                    bot.send_message(CHAT_ID, order)
+                    last_orders.append(order)
+        time.sleep(600)  # Ждем 10 минут перед следующей проверкой
+
+# Функция для отправки последнего найденного заказа
+def send_last_order(message):
+    """Отправляет последний найденный заказ при запросе."""
+    last_orders = get_kwork_orders()
+    if last_orders:
+        bot.send_message(message.chat.id, last_orders[-1])
+    else:
+        bot.send_message(message.chat.id, "❌ Нет подходящих заказов.")
+
+# Обработка кнопки для запроса последнего заказа
+@bot.message_handler(commands=['last_order'])
+def handle_last_order(message):
+    send_last_order(message)
+
+# Запускаем проверку заказов в отдельном потоке
+threading.Thread(target=check_orders, daemon=True).start()
+
+# Запускаем бота
+bot.polling()

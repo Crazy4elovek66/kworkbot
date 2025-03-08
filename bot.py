@@ -3,7 +3,6 @@ from bs4 import BeautifulSoup
 import telebot
 import time
 import threading
-from telebot import types
 
 # Токен твоего бота
 API_TOKEN = '8081177731:AAHi6xBekqBeOxsxweLd7P-075UobWS38j8'
@@ -12,8 +11,8 @@ bot = telebot.TeleBot(API_TOKEN)
 # ID чата, куда бот будет отправлять уведомления
 CHAT_ID = '437225657'
 
-# URL категории "Графический дизайн" на Kwork
-KWORK_URL = "https://kwork.ru/projects?c=41"
+# URL категории "Графический дизайн" на Kwork (обновили на c=15)
+BASE_KWORK_URL = "https://kwork.ru/projects?c=15"
 
 # 🔥 Ключевые слова, которые должны быть в заказе (ТОЛЬКО такие заказы отправляем)
 KEYWORDS = [
@@ -39,11 +38,12 @@ STOPWORDS = [
 # Храним последний найденный заказ
 last_order = None
 
-def get_kwork_orders():
+def get_kwork_orders(page=1):
     """Функция парсит сайт Kwork и возвращает только подходящие заказы."""
     global last_order
+    url = f"{BASE_KWORK_URL}&page={page}"
     headers = {"User-Agent": "Mozilla/5.0"}
-    response = requests.get(KWORK_URL, headers=headers)
+    response = requests.get(url, headers=headers)
 
     if response.status_code == 200:
         soup = BeautifulSoup(response.text, "html.parser")
@@ -63,6 +63,8 @@ def get_kwork_orders():
                     results.append(result)
                     last_order = result  # Сохраняем последний найденный заказ
 
+        # Отправляем количество найденных заказов в Telegram
+        bot.send_message(CHAT_ID, f"Найдено {len(results)} подходящих заказов на странице {page}.")
         return results
     else:
         return ["❌ Ошибка парсинга Kwork"]
@@ -72,11 +74,13 @@ def check_orders():
     sent_orders = set()  # Храним уже отправленные заказы
 
     while True:
-        orders = get_kwork_orders()
-        for order in orders:
-            if order not in sent_orders:  # Отправляем только новые заказы
-                bot.send_message(CHAT_ID, order)
-                sent_orders.add(order)
+        # Парсим 4 страницы (от 1 до 4)
+        for page in range(1, 5):
+            orders = get_kwork_orders(page)
+            for order in orders:
+                if order not in sent_orders:  # Отправляем только новые заказы
+                    bot.send_message(CHAT_ID, order)
+                    sent_orders.add(order)
 
         time.sleep(600)  # Ждем 10 минут перед следующей проверкой
 

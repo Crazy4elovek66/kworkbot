@@ -1,8 +1,18 @@
 import time
+import telebot
 from playwright.sync_api import sync_playwright
 
+# Ваши настройки
+API_TOKEN = 'ВАШ_ТЕЛЕГРАМ_ТОКЕН'
 KWORK_URL = "https://kwork.ru/projects?c=15"  # Убедись, что это правильный URL
-KEYWORDS = ['web', 'design', 'python']  # Пример ключевых слов
+KEYWORDS = ['python', 'дизайн', 'веб']  # Пример ключевых слов
+CHAT_ID = 'ВАШ_ЧАТ_ID'  # ID чата для отправки сообщений
+
+bot = telebot.TeleBot(API_TOKEN)
+
+def send_telegram_message(message):
+    """Функция для отправки сообщений в Telegram."""
+    bot.send_message(CHAT_ID, message)
 
 def get_kwork_orders():
     """Функция парсит сайт Kwork и возвращает только подходящие заказы."""
@@ -62,11 +72,11 @@ def check_orders():
     while True:
         orders = get_kwork_orders()
         if orders:
-            print(f"Найдено {len(orders)} подходящих заказов:")
-            for order in orders:
-                print(order)
+            message = f"Найдено {len(orders)} подходящих заказов:\n"
+            message += "\n\n".join(orders)
+            send_telegram_message(message)
         else:
-            print("Нет подходящих заказов.")
+            send_telegram_message("Нет подходящих заказов.")
         time.sleep(600)  # Пауза в 10 минут
 
 if __name__ == "__main__":

@@ -3,10 +3,10 @@ import telebot
 from playwright.sync_api import sync_playwright
 
 # Ваши настройки
-API_TOKEN = 'ВАШ_ТЕЛЕГРАМ_ТОКЕН'
+API_TOKEN = '8081177731:AAHi6xBekqBeOxsxweLd7P-075UobWS38j8'
 KWORK_URL = "https://kwork.ru/projects?c=15"  # Убедись, что это правильный URL
 KEYWORDS = ['python', 'дизайн', 'веб']  # Пример ключевых слов
-CHAT_ID = 'ВАШ_ЧАТ_ID'  # ID чата для отправки сообщений
+CHAT_ID = '437225657'  # ID чата для отправки сообщений
 
 bot = telebot.TeleBot(API_TOKEN)
 

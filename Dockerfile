@@ -1,20 +1,33 @@
-# Используем официальный Python-образ
 FROM python:3.11-slim
 
-# Устанавливаем необходимые зависимости
+# Установка зависимостей для браузера
 RUN apt-get update && apt-get install -y \
-    wget unzip gnupg curl \
-    && apt-get clean
+    libglib2.0-0 \
+    libnss3 \
+    libgdk-pixbuf2.0-0 \
+    libdbus-1-3 \
+    libatk-1.0-0 \
+    libatk-bridge2.0-0 \
+    libexpat1 \
+    libx11-6 \
+    libxcomposite1 \
+    libxdamage1 \
+    libxext6 \
+    libxi6 \
+    libxrandr2 \
+    libxfixes3 \
+    libx11-xcb1
 
-# Устанавливаем Playwright и необходимые браузеры
-RUN pip install playwright && playwright install
+# Установка зависимостей для Playwright
+RUN pip install playwright
+RUN playwright install --with-deps
 
-# Копируем проект в контейнер
-COPY . /app
+# Копирование файлов проекта в контейнер
 WORKDIR /app
+COPY . /app
 
-# Устанавливаем Python-зависимости
-RUN pip install --no-cache-dir -r requirements.txt
+# Установка Python зависимостей
+RUN pip install -r requirements.txt
 
-# Запускаем основной скрипт
+# Запуск вашего скрипта
 CMD ["python", "bot.py"]

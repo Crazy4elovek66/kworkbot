@@ -92,6 +92,7 @@ def handle_last_order(message):
 def handle_scan(message):
     bot.send_message(message.chat.id, "✅ Принудительное сканирование завершено!")
     orders = get_kwork_orders()
+    
     if orders:
         for order in orders:
             bot.send_message(message.chat.id, order)

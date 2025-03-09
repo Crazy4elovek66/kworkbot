@@ -4,19 +4,24 @@ import telebot
 import time
 import threading
 
+# Токен и ID чата
 API_TOKEN = '8081177731:AAHi6xBekqBeOxsxweLd7P-075UobWS38j8'
-bot = telebot.TeleBot(API_TOKEN)
 CHAT_ID = '437225657'
+bot = telebot.TeleBot(API_TOKEN)
 
+# URL Kwork категории "Графический дизайн"
 KWORK_URL = "https://kwork.ru/projects?c=15"
 
-# Обновлённый список ключевых слов
+# Ключевые слова (обновлённые)
 KEYWORDS = [
-    "логотип", "баннер", "оформление YouTube", "оформление Twitch", "YouTube", "Twitch", "VK", "ВКонтакте",
-    "аватарка", "превью", "иконки", "фирменный стиль", "визитка", "листовка", "флаер", "презентация",
-    "дизайн визитки", "дизайн листовки", "дизайн флаера", "брендовая листовка", "корпоративная визитка"
+    "логотип", "баннер", "оформление YouTube", "оформление Twitch",
+    "YouTube", "Twitch", "VK", "ВКонтакте", "аватарка", "превью", "иконки",
+    "фирменный стиль", "визитка", "листовка", "флаер", "презентация",
+    "дизайн визитки", "дизайн листовки", "дизайн флаера",
+    "брендовая листовка", "корпоративная визитка"
 ]
 
+# Получение заказов
 def get_kwork_orders():
     headers = {"User-Agent": "Mozilla/5.0"}
     orders = []
@@ -42,39 +47,47 @@ def get_kwork_orders():
                     link = "https://kwork.ru" + title_tag["href"] if title_tag else "Ссылка не найдена"
 
                     orders.append(f"📌 {title}\n💰 {price}\n🔗 {link}")
-
     return orders
 
+# Хранение последних заказов
 last_orders = []
 
-def check_orders(send=True):
-    global last_orders
-    new_orders = get_kwork_orders()
-    if new_orders:
-        for order in new_orders:
-            if order not in last_orders:
-                if send:
-                    bot.send_message(CHAT_ID, order)
-                last_orders.append(order)
-
-# Фоновая проверка
+# Фоновая проверка каждые 10 минут
 def run_checker():
+    global last_orders
     while True:
-        check_orders()
+        new_orders = get_kwork_orders()
+        if new_orders:
+            for order in new_orders:
+                if order not in last_orders:
+                    bot.send_message(CHAT_ID, order)
+                    last_orders.append(order)
         time.sleep(600)
 
+# Команда /last_order
 @bot.message_handler(commands=['last_order'])
 def send_last_order(message):
-    check_orders(send=False)
     if last_orders:
         bot.send_message(message.chat.id, last_orders[-1])
     else:
-        bot.send_message(message.chat.id, "❌ Нет подходящих заказов.")
+        bot.send_message(message.chat.id, "❌ Пока нет сохранённых заказов.")
 
+# Команда /scan — ручной запуск и отображение результата
 @bot.message_handler(commands=['scan'])
 def force_scan(message):
-    check_orders()
-    bot.send_message(message.chat.id, "✅ Принудительное сканирование завершено!")
+    global last_orders
+    new_orders = get_kwork_orders()
+    found = 0
+    if new_orders:
+        for order in new_orders:
+            if order not in last_orders:
+                bot.send_message(message.chat.id, order)
+                last_orders.append(order)
+                found += 1
+        bot.send_message(message.chat.id, f"✅ Найдено новых заказов: {found}")
+    else:
+        bot.send_message(message.chat.id, "❌ Подходящих заказов не найдено.")
 
+# Запуск фонового потока и бота
 threading.Thread(target=run_checker, daemon=True).start()
 bot.polling()

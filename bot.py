@@ -5,17 +5,17 @@ import time
 import threading
 from telebot import types
 
-# Токен твоего бота
+# Токен бота
 API_TOKEN = '8081177731:AAHi6xBekqBeOxsxweLd7P-075UobWS38j8'
 bot = telebot.TeleBot(API_TOKEN)
 
-# ID чата, куда бот будет отправлять уведомления
+# ID чата
 CHAT_ID = '437225657'
 
-# URL категории "Графический дизайн" на Kwork
+# URL категории "Графический дизайн"
 KWORK_URL = "https://kwork.ru/projects?c=15"
 
-# Ключевые слова, которые должны быть в заказе (ТОЛЬКО такие заказы отправляем)
+# Ключевые слова
 KEYWORDS = [
     "логотип", "баннер", "оформление YouTube", "оформление Twitch", "оформление VK",
     "аватарка", "превью", "иконки", "фирменный стиль", "дизайн визитки",
@@ -30,19 +30,12 @@ KEYWORDS = [
     "эксклюзивная визитка", "YouTube", "Twitch", "VK"
 ]
 
-# Стоп-слова (если есть в заказе — игнорируем)
-STOPWORDS = [
-    "презентация", "отредактировать", "изменить текст",
-    "чертеж", "архитектура", "3D", "моделирование", "интерьер", "экстерьер"
-]
-
-# Функция парсит сайт Kwork и возвращает только подходящие заказы
+# Получение подходящих заказов без фильтрации по стоп-словам
 def get_kwork_orders():
-    """Функция парсит сайт Kwork и возвращает только подходящие заказы."""
     headers = {"User-Agent": "Mozilla/5.0"}
     orders = []
 
-    for page in range(1, 5):  # Перебираем 4 страницы
+    for page in range(1, 5):
         url = f"{KWORK_URL}&page={page}"
         response = requests.get(url, headers=headers)
 
@@ -51,43 +44,45 @@ def get_kwork_orders():
             order_cards = soup.find_all("div", class_="card__content")
 
             for order in order_cards:
-                title = order.find("a", class_="wants-card__header-title").text.strip()
-                description = order.find("div", class_="wants-card__description").text.strip() if order.find("div", class_="wants-card__description") else ""
-                link = "https://kwork.ru" + order.find("a")["href"]
-                price = order.find("div", class_="wants-card__price").text.strip()
+                title_tag = order.find("a", class_="wants-card__header-title")
+                description_tag = order.find("div", class_="wants-card__description")
+                price_tag = order.find("div", class_="wants-card__price")
 
-                # Фильтрация по ключевым словам в названии и описании
-                if any(word.lower() in title.lower() for word in KEYWORDS) or any(word.lower() in description.lower() for word in KEYWORDS):
-                    # Проверяем, что в заказе НЕТ стоп-слов
-                    if not any(stopword.lower() in title.lower() or stopword.lower() in description.lower() for stopword in STOPWORDS):
-                        orders.append(f"📌 {title}\n💰 {price}\n🔗 {link}")
+                if not title_tag or not price_tag:
+                    continue
+
+                title = title_tag.text.strip()
+                description = description_tag.text.strip() if description_tag else ""
+                link = "https://kwork.ru" + title_tag["href"]
+                price = price_tag.text.strip()
+
+                if any(word.lower() in title.lower() or word.lower() in description.lower() for word in KEYWORDS):
+                    orders.append(f"📌 {title}\n💰 {price}\n🔗 {link}")
 
     return orders
 
-# Функция проверяет заказы и отправляет уведомления в Telegram
+# Проверка заказов и отправка новых
 def check_orders():
-    """Функция проверяет заказы и отправляет уведомления в Telegram."""
-    last_orders = []  # Храним список найденных заказов
+    last_orders = []
 
     while True:
         orders = get_kwork_orders()
-        if orders:  # Если есть новые заказы
+        if orders:
             for order in orders:
-                if order not in last_orders:  # Отправляем только новые заказы
+                if order not in last_orders:
                     bot.send_message(CHAT_ID, order)
                     last_orders.append(order)
-        time.sleep(600)  # Ждем 10 минут перед следующей проверкой
+        time.sleep(600)
 
-# Функция для отправки последнего найденного заказа
+# Ручной показ последнего заказа
 def send_last_order(message):
-    """Отправляет последний найденный заказ при запросе."""
     last_orders = get_kwork_orders()
     if last_orders:
         bot.send_message(message.chat.id, last_orders[-1])
     else:
         bot.send_message(message.chat.id, "❌ Нет подходящих заказов.")
 
-# Функция для принудительного сканирования заказов
+# Принудительный запуск проверки
 def force_scan_orders(message):
     orders = get_kwork_orders()
     if orders:
@@ -96,27 +91,26 @@ def force_scan_orders(message):
     else:
         bot.send_message(message.chat.id, "❌ Нет подходящих заказов.")
 
-# Кнопка для принудительного сканирования заказов
-@bot.message_handler(commands=['force_scan'])
-def handle_force_scan(message):
-    # Создаем инлайн кнопку для сканирования заказов
-    markup = types.InlineKeyboardMarkup()
-    btn = types.InlineKeyboardButton(text="Принудительно найти заказы", callback_data="force_scan_orders")
-    markup.add(btn)
-    bot.send_message(message.chat.id, "Нажмите кнопку, чтобы принудительно найти заказы.", reply_markup=markup)
-
-# Обработка нажатия кнопки
-@bot.callback_query_handler(func=lambda call: call.data == "force_scan_orders")
-def callback_force_scan(call):
-    force_scan_orders(call.message)
-
-# Обработка команды /last_order для последнего найденного заказа
+# Обработка команды /last_order
 @bot.message_handler(commands=['last_order'])
 def handle_last_order(message):
     send_last_order(message)
 
-# Запускаем проверку заказов в отдельном потоке
+# Обработка команды /force_scan — вывод кнопки
+@bot.message_handler(commands=['force_scan'])
+def handle_force_scan(message):
+    markup = types.InlineKeyboardMarkup()
+    btn = types.InlineKeyboardButton(text="🔍 Найти заказы сейчас", callback_data="force_scan_orders")
+    markup.add(btn)
+    bot.send_message(message.chat.id, "Нажми кнопку ниже для сканирования:", reply_markup=markup)
+
+# Обработка нажатия на кнопку
+@bot.callback_query_handler(func=lambda call: call.data == "force_scan_orders")
+def callback_force_scan(call):
+    force_scan_orders(call.message)
+
+# Запуск в отдельном потоке
 threading.Thread(target=check_orders, daemon=True).start()
 
-# Запускаем бота
+# Старт бота
 bot.polling()

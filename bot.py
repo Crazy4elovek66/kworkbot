@@ -21,11 +21,7 @@ KEYWORDS = [
     "инфографика", "иллюстрация", "постер", "стикеры",
     "дизайн презентации", "веб-дизайн", "оформление постов", "креативный дизайн",
     "листовка", "флаер", "дизайн листовки", "дизайн флаера", "рекламная листовка",
-    "рекламный флаер", "брендовая листовка", "брендовый флаер", "листовка для мероприятия",
-    "флаер для мероприятия", "промо-листовка", "промо-флаер", "визитка", "дизайн визитки",
-    "визитная карточка", "брендовая визитка", "корпоративная визитка", "персональная визитка",
-    "визитка для компании", "визитка для бизнеса", "креативная визитка", "премиум визитка",
-    "эксклюзивная визитка"
+    "рекламный флаер", "визитка", "дизайн визитки",
 ]
 
 # Функция парсит сайт Kwork с использованием Playwright
@@ -37,38 +33,42 @@ def get_kwork_orders():
         page = browser.new_page()
         page.goto(KWORK_URL)
 
-        # Увеличиваем время ожидания
         page.wait_for_load_state("networkidle")  # Ждем, пока страница полностью загрузится
 
-        # Перебор нескольких страниц
+        # Перебор нескольких страниц с повторной попыткой при ошибке
         for page_num in range(1, 5):  # Перебираем 4 страницы
-            page.goto(f"{KWORK_URL}&page={page_num}")
-            time.sleep(3)  # Увеличена пауза для загрузки контента
+            try:
+                page.goto(f"{KWORK_URL}&page={page_num}")
+                page.wait_for_timeout(5000)  # Ждем 5 секунд для стабильности
+                time.sleep(3)  # Дополнительная пауза для корректной загрузки контента
 
-            order_cards = page.query_selector_all(".card__content")
-            print(f"Страница {page_num}: найдено {len(order_cards)} заказов.")  # Логирование найденных карточек
+                order_cards = page.query_selector_all(".card__content")
+                print(f"Страница {page_num}: найдено {len(order_cards)} заказов.")  # Логирование найденных карточек
 
-            for order in order_cards:
-                title = order.query_selector(".wants-card__header-title")
-                description = order.query_selector(".wants-card__description")
-                price = order.query_selector(".wants-card__price")
+                for order in order_cards:
+                    title = order.query_selector(".wants-card__header-title")
+                    description = order.query_selector(".wants-card__description")
+                    price = order.query_selector(".wants-card__price")
 
-                if title and description and price:
-                    title = title.inner_text().strip()
-                    description = description.inner_text().strip()
-                    price = price.inner_text().strip()
+                    if title and description and price:
+                        title = title.inner_text().strip()
+                        description = description.inner_text().strip()
+                        price = price.inner_text().strip()
 
-                    link = "https://kwork.ru" + order.query_selector("a")["href"]
+                        link = "https://kwork.ru" + order.query_selector("a")["href"]
 
-                    # Логируем данные о заказе
-                    print(f"Заголовок: {title}")
-                    print(f"Описание: {description}")
-                    print(f"Цена: {price}")
-                    print(f"Ссылка: {link}")
+                        # Логируем данные о заказе
+                        print(f"Заголовок: {title}")
+                        print(f"Описание: {description}")
+                        print(f"Цена: {price}")
+                        print(f"Ссылка: {link}")
 
-                    # Фильтрация по ключевым словам
-                    if any(word.lower() in title.lower() for word in KEYWORDS) or any(word.lower() in description.lower() for word in KEYWORDS):
-                        orders.append(f"📌 {title}\n💰 {price}\n🔗 {link}")
+                        # Фильтрация по ключевым словам
+                        if any(word.lower() in title.lower() for word in KEYWORDS) or any(word.lower() in description.lower() for word in KEYWORDS):
+                            orders.append(f"📌 {title}\n💰 {price}\n🔗 {link}")
+            except Exception as e:
+                print(f"Ошибка при загрузке страницы {page_num}: {e}")
+                time.sleep(10)  # Ждем 10 секунд перед повтором
 
         browser.close()
 

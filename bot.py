@@ -37,23 +37,30 @@ def get_kwork_orders():
         page = browser.new_page()
         page.goto(KWORK_URL)
 
+        # Увеличиваем время ожидания
+        page.wait_for_load_state("networkidle")  # Ждем, пока страница полностью загрузится
+
         # Перебор нескольких страниц
         for page_num in range(1, 5):  # Перебираем 4 страницы
             page.goto(f"{KWORK_URL}&page={page_num}")
-            time.sleep(2)  # Пауза для загрузки контента
+            time.sleep(3)  # Увеличена пауза для загрузки контента
 
             order_cards = page.query_selector_all(".card__content")
             for order in order_cards:
-                title = order.query_selector(".wants-card__header-title").inner_text().strip()
+                title = order.query_selector(".wants-card__header-title")
                 description = order.query_selector(".wants-card__description")
-                description = description.inner_text().strip() if description else ""
+                price = order.query_selector(".wants-card__price")
 
-                link = "https://kwork.ru" + order.query_selector("a")["href"]
-                price = order.query_selector(".wants-card__price").inner_text().strip()
+                if title and description and price:
+                    title = title.inner_text().strip()
+                    description = description.inner_text().strip()
+                    price = price.inner_text().strip()
 
-                # Фильтрация по ключевым словам
-                if any(word.lower() in title.lower() for word in KEYWORDS) or any(word.lower() in description.lower() for word in KEYWORDS):
-                    orders.append(f"📌 {title}\n💰 {price}\n🔗 {link}")
+                    link = "https://kwork.ru" + order.query_selector("a")["href"]
+
+                    # Фильтрация по ключевым словам
+                    if any(word.lower() in title.lower() for word in KEYWORDS) or any(word.lower() in description.lower() for word in KEYWORDS):
+                        orders.append(f"📌 {title}\n💰 {price}\n🔗 {link}")
 
         browser.close()
 

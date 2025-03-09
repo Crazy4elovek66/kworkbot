@@ -3,6 +3,7 @@ from bs4 import BeautifulSoup
 import telebot
 import time
 import threading
+from telebot import types
 
 # Токен твоего бота
 API_TOKEN = '8081177731:AAHi6xBekqBeOxsxweLd7P-075UobWS38j8'
@@ -86,7 +87,30 @@ def send_last_order(message):
     else:
         bot.send_message(message.chat.id, "❌ Нет подходящих заказов.")
 
-# Обработка кнопки для запроса последнего заказа
+# Функция для принудительного сканирования заказов
+def force_scan_orders(message):
+    orders = get_kwork_orders()
+    if orders:
+        for order in orders:
+            bot.send_message(message.chat.id, order)
+    else:
+        bot.send_message(message.chat.id, "❌ Нет подходящих заказов.")
+
+# Кнопка для принудительного сканирования заказов
+@bot.message_handler(commands=['force_scan'])
+def handle_force_scan(message):
+    # Создаем инлайн кнопку для сканирования заказов
+    markup = types.InlineKeyboardMarkup()
+    btn = types.InlineKeyboardButton(text="Принудительно найти заказы", callback_data="force_scan_orders")
+    markup.add(btn)
+    bot.send_message(message.chat.id, "Нажмите кнопку, чтобы принудительно найти заказы.", reply_markup=markup)
+
+# Обработка нажатия кнопки
+@bot.callback_query_handler(func=lambda call: call.data == "force_scan_orders")
+def callback_force_scan(call):
+    force_scan_orders(call.message)
+
+# Обработка команды /last_order для последнего найденного заказа
 @bot.message_handler(commands=['last_order'])
 def handle_last_order(message):
     send_last_order(message)

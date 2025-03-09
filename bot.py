@@ -46,6 +46,8 @@ def get_kwork_orders():
             time.sleep(3)  # Увеличена пауза для загрузки контента
 
             order_cards = page.query_selector_all(".card__content")
+            print(f"Страница {page_num}: найдено {len(order_cards)} заказов.")  # Логирование найденных карточек
+
             for order in order_cards:
                 title = order.query_selector(".wants-card__header-title")
                 description = order.query_selector(".wants-card__description")
@@ -57,6 +59,12 @@ def get_kwork_orders():
                     price = price.inner_text().strip()
 
                     link = "https://kwork.ru" + order.query_selector("a")["href"]
+
+                    # Логируем данные о заказе
+                    print(f"Заголовок: {title}")
+                    print(f"Описание: {description}")
+                    print(f"Цена: {price}")
+                    print(f"Ссылка: {link}")
 
                     # Фильтрация по ключевым словам
                     if any(word.lower() in title.lower() for word in KEYWORDS) or any(word.lower() in description.lower() for word in KEYWORDS):
@@ -73,6 +81,7 @@ def check_orders():
 
     while True:
         orders = get_kwork_orders()
+        print(f"Найдено заказов: {len(orders)}")  # Логирование количества найденных заказов
         if orders:  # Если есть новые заказы
             for order in orders:
                 if order not in last_orders:  # Отправляем только новые заказы

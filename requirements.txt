@@ -4,3 +4,6 @@ beautifulsoup4
 aiogram
 schedule
 playwright
+selenium
+webdriver-manager
+python-telegram-bot

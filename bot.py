@@ -1,25 +1,48 @@
 import time
 import telebot
+import pickle
+import os  # Для работы с переменными окружения
 from playwright.sync_api import sync_playwright
 
 # Ваши настройки
 API_TOKEN = '8081177731:AAHi6xBekqBeOxsxweLd7P-075UobWS38j8'
 KWORK_URL = "https://kwork.ru/projects?c=15"  # Убедись, что это правильный URL
-KEYWORDS = ['python', 'дизайн', 'веб']  # Пример ключевых слов
 CHAT_ID = '437225657'  # ID чата для отправки сообщений
 
 bot = telebot.TeleBot(API_TOKEN)
 
+# Получаем ключевые слова из переменной окружения
+KEYWORDS = os.getenv("KEYWORDS", "").split(",")  # Разделяем по запятой и создаём список
+
 def send_telegram_message(message):
     """Функция для отправки сообщений в Telegram."""
     bot.send_message(CHAT_ID, message)
+
+def load_cookies(page):
+    """Загружает cookies из файла и применяет их для авторизации на сайте Kwork."""
+    try:
+        with open("kwork_cookies.pkl", "rb") as f:
+            cookies = pickle.load(f)
+            for cookie in cookies:
+                page.context.add_cookies([cookie])
+        print("✅ Cookies успешно загружены и применены.")
+    except FileNotFoundError:
+        print("⚠️ Cookies файл не найден. Убедитесь, что авторизовались через 'auth.py'.")
+        return False
+    return True
 
 def get_kwork_orders():
     """Функция парсит сайт Kwork и возвращает только подходящие заказы."""
     orders = []
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
-        page = browser.new_page()
+        context = browser.new_context()
+        page = context.new_page()
+
+        # Загружаем cookies для авторизации
+        if not load_cookies(page):
+            browser.close()
+            return []
 
         try:
             page.goto(KWORK_URL, timeout=30000)  # Тайм-аут на загрузку страницы
